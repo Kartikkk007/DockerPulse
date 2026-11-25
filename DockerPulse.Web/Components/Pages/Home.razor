@@ -1,5 +1,13 @@
 ﻿@page "/"
+
 @using MudBlazor
+@using DockerPulse.Web.Models
+@using DockerPulse.Web.Services
+@using Microsoft.JSInterop
+
+@inject DockerService DockerService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Dashboard | DockerPulse</PageTitle>
 
@@ -21,7 +29,7 @@
         <MudChip T="string"
                  Color="Color.Success"
                  Variant="Variant.Outlined">
-            ● System Online
+            ● Docker Connected
         </MudChip>
 
     </div>
@@ -30,7 +38,6 @@
     <!-- OVERVIEW CARDS -->
     <MudGrid Spacing="3">
 
-        <!-- TOTAL CONTAINERS -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
 
@@ -39,18 +46,17 @@
                 </MudText>
 
                 <MudText Typo="Typo.h4" Class="mt-2">
-                    12
+                    @ContainerList.Count
                 </MudText>
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Across all hosts
+                    Across Docker Engine
                 </MudText>
 
             </MudPaper>
         </MudItem>
 
 
-        <!-- RUNNING CONTAINERS -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
 
@@ -59,7 +65,7 @@
                 </MudText>
 
                 <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-2">
-                    9
+                    @RunningCount
                 </MudText>
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
@@ -70,48 +76,42 @@
         </MudItem>
 
 
-        <!-- CPU USAGE -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
 
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
-                    CPU Usage
+                    Stopped Containers
                 </MudText>
 
-                <MudText Typo="Typo.h4" Class="mt-2">
-                    34.8%
+                <MudText Typo="Typo.h4" Color="Color.Error" Class="mt-2">
+                    @StoppedCount
                 </MudText>
-
-                <MudProgressLinear Value="34.8"
-                                   Color="Color.Info"
-                                   Class="mt-3" />
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Overall utilization
+                    Currently inactive
                 </MudText>
 
             </MudPaper>
         </MudItem>
 
 
-        <!-- MEMORY USAGE -->
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
 
                 <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
-                    Memory Usage
+                    Docker Status
                 </MudText>
 
-                <MudText Typo="Typo.h4" Class="mt-2">
-                    62.4%
-                </MudText>
+                <MudText Typo="Typo.h5"
+                         Color="@(_errorMessage == null ? Color.Success : Color.Error)"
+                         Class="mt-3">
 
-                <MudProgressLinear Value="62.4"
-                                   Color="Color.Warning"
-                                   Class="mt-3" />
+                    @(_errorMessage == null ? "Connected" : "Disconnected")
+
+                </MudText>
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Overall utilization
+                    Docker Engine connection
                 </MudText>
 
             </MudPaper>
@@ -120,10 +120,18 @@
     </MudGrid>
 
 
+    <!-- ERROR MESSAGE -->
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+
     <!-- PERFORMANCE CHARTS -->
     <MudGrid Class="mt-3" Spacing="3">
 
-        <!-- CPU PERFORMANCE -->
         <MudItem xs="12" md="6">
 
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
@@ -133,7 +141,7 @@
                 </MudText>
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    CPU utilization overview
+                    Sample visualization — live metrics coming next
                 </MudText>
 
                 <div class="chart-container">
@@ -160,7 +168,6 @@
         </MudItem>
 
 
-        <!-- MEMORY PERFORMANCE -->
         <MudItem xs="12" md="6">
 
             <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
@@ -170,7 +177,7 @@
                 </MudText>
 
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                    Memory utilization overview
+                    Sample visualization — live metrics coming next
                 </MudText>
 
                 <div class="chart-container">
@@ -204,73 +211,152 @@
 
         <div class="d-flex justify-space-between align-center mb-4">
 
-            <MudText Typo="Typo.h6">
-                Running Containers
-            </MudText>
+            <div>
+                <MudText Typo="Typo.h6">
+                    Docker Containers
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Actual containers from your Docker Engine
+                </MudText>
+            </div>
 
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
-                       Size="Size.Small">
-                View All
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadContainers"
+                       Disabled="_loading">
+
+                Refresh
+
             </MudButton>
 
         </div>
 
 
-        <MudTable Items="@Containers"
+        <MudTable Items="@ContainerList"
                   Hover="true"
                   Dense="true"
-                  Striped="true">
+                  Striped="true"
+                  Loading="_loading">
 
             <HeaderContent>
 
                 <MudTh>Container</MudTh>
                 <MudTh>Image</MudTh>
+                <MudTh>State</MudTh>
                 <MudTh>Status</MudTh>
-                <MudTh>CPU</MudTh>
-                <MudTh>Memory</MudTh>
+                <MudTh>Ports</MudTh>
+                <MudTh>Actions</MudTh>
 
             </HeaderContent>
 
 
             <RowTemplate>
 
+                <!-- CONTAINER NAME -->
                 <MudTd DataLabel="Container">
+
                     <MudText Typo="Typo.body2">
                         @context.Name
                     </MudText>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(context.Id.Length > 12 ? context.Id[..12] : context.Id)
+                    </MudText>
+
                 </MudTd>
 
 
+                <!-- IMAGE -->
                 <MudTd DataLabel="Image">
                     @context.Image
                 </MudTd>
 
 
-                <MudTd DataLabel="Status">
+                <!-- STATE -->
+                <MudTd DataLabel="State">
 
                     <MudChip T="string"
-                             Color="Color.Success"
-                             Size="Size.Small"
-                             Variant="Variant.Filled">
+                             Color="@GetStatusColor(context.State)"
+                             Size="Size.Small">
 
-                        @context.Status
+                        @context.State
 
                     </MudChip>
 
                 </MudTd>
 
 
-                <MudTd DataLabel="CPU">
-                    @context.Cpu%
+                <!-- STATUS -->
+                <MudTd DataLabel="Status">
+                    @context.Status
                 </MudTd>
 
 
-                <MudTd DataLabel="Memory">
-                    @context.Memory
+                <!-- PORTS -->
+                <MudTd DataLabel="Ports">
+                    @(string.IsNullOrWhiteSpace(context.Ports)
+                        ? "—"
+                        : context.Ports)
+                </MudTd>
+
+
+                <!-- ACTIONS -->
+                <MudTd DataLabel="Actions">
+
+                    @if (context.State.Equals(
+                        "running",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudTooltip Text="Stop Container">
+
+                            <MudIconButton Icon="@Icons.Material.Filled.StopCircle"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => StopContainer(context))" />
+
+                        </MudTooltip>
+
+                        <MudTooltip Text="Restart Container">
+
+                            <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                           Color="Color.Info"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RestartContainer(context))" />
+
+                        </MudTooltip>
+                    }
+                    else if (context.State.Equals(
+                        "exited",
+                        StringComparison.OrdinalIgnoreCase)
+                        || context.State.Equals(
+                        "created",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudTooltip Text="Start Container">
+
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                                           Color="Color.Success"
+                                           Size="Size.Small"
+                                           OnClick="@(() => StartContainer(context))" />
+
+                        </MudTooltip>
+                    }
+
                 </MudTd>
 
             </RowTemplate>
+
+
+            <NoRecordsContent>
+
+                <MudText Class="pa-4" Color="Color.Secondary">
+                    No Docker containers found.
+                </MudText>
+
+            </NoRecordsContent>
 
         </MudTable>
 
@@ -279,10 +365,153 @@
 </MudContainer>
 
 
-<!-- COMPONENT LOGIC -->
 @code {
 
-    // CPU chart dummy data
+    // CONTAINER DATA
+
+    private List<DockerContainer> ContainerList = new();
+
+    private bool _loading = true;
+
+    private string? _errorMessage;
+
+
+    // SUMMARY COUNTS
+
+    private int RunningCount =>
+        ContainerList.Count(c =>
+            c.State.Equals("running", StringComparison.OrdinalIgnoreCase));
+
+    private int StoppedCount =>
+        ContainerList.Count(c =>
+            c.State.Equals("exited", StringComparison.OrdinalIgnoreCase));
+
+
+    // INITIALIZATION
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContainers();
+    }
+
+
+    // LOAD CONTAINERS
+
+    private async Task LoadContainers()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+
+            ContainerList = await DockerService.GetContainersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+
+    // START CONTAINER
+
+    private async Task StartContainer(DockerContainer container)
+    {
+        try
+        {
+            await DockerService.StartContainerAsync(container.Id);
+
+            Snackbar.Add(
+                $"{container.Name} started successfully!",
+                Severity.Success);
+
+            await LoadContainers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Failed to start {container.Name}: {ex.Message}",
+                Severity.Error);
+        }
+    }
+
+
+    // STOP CONTAINER
+
+    private async Task StopContainer(DockerContainer container)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Are you sure you want to stop {container.Name}?"
+        );
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            await DockerService.StopContainerAsync(container.Id);
+
+            Snackbar.Add(
+                $"{container.Name} stopped successfully!",
+                Severity.Success);
+
+            await LoadContainers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Failed to stop {container.Name}: {ex.Message}",
+                Severity.Error);
+        }
+    }
+
+
+    // RESTART CONTAINER
+
+    private async Task RestartContainer(DockerContainer container)
+    {
+        try
+        {
+            await DockerService.RestartContainerAsync(container.Id);
+
+            Snackbar.Add(
+                $"{container.Name} restarted successfully!",
+                Severity.Success);
+
+            await LoadContainers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"Failed to restart {container.Name}: {ex.Message}",
+                Severity.Error);
+        }
+    }
+
+
+    // STATUS COLORS
+
+    private Color GetStatusColor(string state)
+    {
+        return state.ToLowerInvariant() switch
+        {
+            "running" => Color.Success,
+            "exited" => Color.Error,
+            "paused" => Color.Warning,
+            "created" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+
+    // SAMPLE CHART DATA
+    // We will replace this with actual Docker statistics later.
+
     private List<ChartPoint> CpuPoints =
     [
         new("10:00", 20),
@@ -293,8 +522,6 @@
         new("10:25", 35)
     ];
 
-
-    // Memory chart dummy data
     private List<ChartPoint> MemoryPoints =
     [
         new("10:00", 40),
@@ -305,70 +532,11 @@
         new("10:25", 62)
     ];
 
-
-    // Container dummy data
-    private List<ContainerInfo> Containers =
-    [
-        new()
-        {
-            Name = "dockerpulse-api",
-            Image = "aspnet:10.0",
-            Status = "Running",
-            Cpu = 12.4,
-            Memory = "256 MB"
-        },
-
-        new()
-        {
-            Name = "sql-server",
-            Image = "mssql:2022",
-            Status = "Running",
-            Cpu = 18.2,
-            Memory = "1.2 GB"
-        },
-
-        new()
-        {
-            Name = "redis-cache",
-            Image = "redis:latest",
-            Status = "Running",
-            Cpu = 2.1,
-            Memory = "128 MB"
-        },
-
-        new()
-        {
-            Name = "nginx-proxy",
-            Image = "nginx:latest",
-            Status = "Running",
-            Cpu = 2.1,
-            Memory = "64 MB"
-        }
-    ];
-
-
-    // Chart point model
     public record ChartPoint(string Label, double Value);
-
-
-    // Container model
-    public class ContainerInfo
-    {
-        public string Name { get; set; } = "";
-
-        public string Image { get; set; } = "";
-
-        public string Status { get; set; } = "";
-
-        public double Cpu { get; set; }
-
-        public string Memory { get; set; } = "";
-    }
 
 }
 
 
-<!-- PAGE STYLING -->
 <style>
 
     .dashboard-card {
@@ -409,5 +577,4 @@
     .memory-bar {
         background: #F59E0B;
     }
-
 </style>

@@ -1,6 +1,7 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
 using DockerPulse.Web.Models;
+using System.Threading;
 
 namespace DockerPulse.Web.Services;
 
@@ -15,6 +16,73 @@ public class DockerService
         );
 
         _dockerClient = configuration.CreateClient();
+    }
+    public async Task<ContainerStats> GetContainerStatsAsync(string containerId)
+    {
+        var statsCompletion = new TaskCompletionSource<ContainerStatsResponse>();
+
+        var progress = new Progress<ContainerStatsResponse>(stats =>
+        {
+            statsCompletion.TrySetResult(stats);
+        });
+
+        await _dockerClient.Containers.GetContainerStatsAsync(
+     containerId,
+     new ContainerStatsParameters
+     {
+         Stream = false
+     },
+     progress,
+     CancellationToken.None
+ );
+
+        var stats = await statsCompletion.Task;
+        // Calculate CPU usage
+        var cpuDelta =
+            stats.CPUStats.CPUUsage.TotalUsage -
+            stats.PreCPUStats.CPUUsage.TotalUsage;
+
+        var systemCpuDelta =
+            stats.CPUStats.SystemUsage -
+            stats.PreCPUStats.SystemUsage;
+
+        var numberOfCpus = stats.CPUStats.OnlineCPUs;
+
+        if (numberOfCpus == 0)
+        {
+            numberOfCpus = (uint)(
+                stats.CPUStats.CPUUsage.PercpuUsage?.Count ?? 1
+            );
+        }
+
+        double cpuUsagePercent = 0;
+
+        if (systemCpuDelta > 0 &&
+            stats.CPUStats.CPUUsage.TotalUsage >=
+            stats.PreCPUStats.CPUUsage.TotalUsage &&
+            stats.CPUStats.SystemUsage >=
+            stats.PreCPUStats.SystemUsage)
+        {
+            cpuUsagePercent =
+                (double)cpuDelta / systemCpuDelta *
+                numberOfCpus * 100.0;
+        }
+
+        return new ContainerStats
+        {
+            ContainerId = containerId,
+            CpuUsagePercent = cpuUsagePercent,
+
+            MemoryUsageMB = stats.MemoryStats.Usage / (1024.0 * 1024.0),
+
+            MemoryLimitMB = stats.MemoryStats.Limit / (1024.0 * 1024.0),
+
+            MemoryUsagePercent = stats.MemoryStats.Limit > 0
+                ? stats.MemoryStats.Usage * 100.0 / stats.MemoryStats.Limit
+                : 0,
+
+            LastUpdated = DateTime.Now
+        };
     }
 
     // GET ALL CONTAINERS
@@ -75,4 +143,5 @@ public class DockerService
             new ContainerRestartParameters()
         );
     }
+
 }

@@ -17,14 +17,7 @@
 </head>
 <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 <body>
-    @using DockerPulse.Web.Services
-    <MudThemeProvider Theme="@DockerPulseTheme.DarkTheme"
-                      IsDarkMode="true" />
-    <MudPopoverProvider />
-    <MudDialogProvider />
-    <MudSnackbarProvider />
-
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
