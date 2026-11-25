@@ -1,0 +1,185 @@
+﻿@inherits LayoutComponentBase
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Routing
+
+<MudLayout>
+
+    <!-- SIDEBAR -->
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Breakpoint="Breakpoint.Md"
+               Elevation="2"
+               Class="docker-sidebar">
+
+        <!-- BRANDING -->
+        <MudDrawerHeader Class="sidebar-header">
+
+            <MudAvatar Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Size="Size.Medium">
+                <MudIcon Icon="@Icons.Material.Filled.Dns" />
+            </MudAvatar>
+
+            <div class="ml-3">
+                <MudText Typo="Typo.h6" Class="font-weight-bold">
+                    DockerPulse
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Container Monitoring
+                </MudText>
+            </div>
+
+        </MudDrawerHeader>
+
+        <MudDivider />
+
+        <!-- NAVIGATION -->
+        <MudNavMenu Class="pa-3">
+
+            <MudText Typo="Typo.overline"
+                     Color="Color.Secondary"
+                     Class="ml-3 mb-2">
+                MONITORING
+            </MudText>
+
+            <MudNavLink Href="/"
+                        Match="NavLinkMatch.All"
+                        Icon="@Icons.Material.Filled.Dashboard"
+                        IconColor="Color.Primary">
+                Dashboard
+            </MudNavLink>
+
+            <MudNavLink Href="/containers"
+                        Icon="@Icons.Material.Filled.ViewInAr">
+                Containers
+            </MudNavLink>
+
+            <MudNavLink Href="/hosts"
+                        Icon="@Icons.Material.Filled.Dns">
+                Hosts
+            </MudNavLink>
+
+            <MudNavLink Href="/analytics"
+                        Icon="@Icons.Material.Filled.Analytics">
+                Analytics
+            </MudNavLink>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.overline"
+                     Color="Color.Secondary"
+                     Class="ml-3 mb-2">
+                SYSTEM
+            </MudText>
+
+            <MudNavLink Href="/settings"
+                        Icon="@Icons.Material.Filled.Settings">
+                Settings
+            </MudNavLink>
+
+        </MudNavMenu>
+
+        <!-- SIDEBAR FOOTER -->
+        <MudSpacer />
+
+        <div class="pa-4">
+
+            <MudPaper Class="pa-3 rounded-lg" Elevation="0">
+
+                <MudText Typo="Typo.subtitle2">
+                    Docker Engine
+                </MudText>
+
+                <div class="d-flex align-center mt-2">
+
+                    <MudIcon Icon="@Icons.Material.Filled.Circle"
+                             Color="Color.Success"
+                             Size="Size.Small" />
+
+                    <MudText Typo="Typo.caption" Class="ml-2">
+                        Monitoring active
+                    </MudText>
+
+                </div>
+
+            </MudPaper>
+
+            <MudText Typo="Typo.caption"
+                     Color="Color.Secondary"
+                     Class="mt-3 text-center">
+                DockerPulse v1.0.0
+            </MudText>
+
+        </div>
+
+    </MudDrawer>
+
+
+    <!-- MAIN CONTENT AREA -->
+    <MudMainContent>
+
+        <!-- TOP NAVIGATION -->
+        <MudAppBar Elevation="1"
+                   Color="Color.Surface"
+                   Dense="true">
+
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Default"
+                           OnClick="@ToggleDrawer"
+                           Edge="Edge.Start" />
+
+            <MudText Typo="Typo.subtitle1" Class="ml-2">
+                Infrastructure Overview
+            </MudText>
+
+            <MudSpacer />
+
+            <MudChip T="string"
+                     Color="Color.Success"
+                     Variant="Variant.Outlined"
+                     Size="Size.Small">
+
+                <MudIcon Icon="@Icons.Material.Filled.Circle"
+                         Size="Size.Small"
+                         Class="mr-1" />
+
+                Connected
+
+            </MudChip>
+
+            <MudIconButton Icon="@Icons.Material.Filled.NotificationsNone"
+                           Color="Color.Default"
+                           Class="ml-2" />
+
+            <MudAvatar Color="Color.Primary"
+                       Size="Size.Small"
+                       Class="ml-2">
+                KS
+            </MudAvatar>
+
+        </MudAppBar>
+
+
+        <!-- PAGE CONTENT -->
+        <div class="main-page-content">
+
+            @Body
+
+        </div>
+
+    </MudMainContent>
+
+</MudLayout>
+
+
+@code {
+
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+}

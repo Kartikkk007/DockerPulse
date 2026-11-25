@@ -1,0 +1,248 @@
+﻿@page "/containers"
+@using MudBlazor
+@inject DockerService DockerService
+@using DockerPulse.Web.Services
+@using DockerPulse.Web.Models
+
+<PageTitle>Containers | DockerPulse</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-space-between align-center mb-6">
+
+        <div>
+            <MudText Typo="Typo.h4" Class="mb-1">
+                Containers
+            </MudText>
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Manage and monitor your Docker containers.
+            </MudText>
+        </div>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="RefreshContainers">
+
+            Refresh
+
+        </MudButton>
+
+    </div>
+
+
+    <!-- SUMMARY CARDS -->
+    <MudGrid Spacing="3">
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-4 rounded-lg" Elevation="2">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Total Containers
+                </MudText>
+
+                <MudText Typo="Typo.h4" Class="mt-2">
+                    @ContainerList.Count
+                </MudText>
+
+            </MudPaper>
+        </MudItem>
+
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-4 rounded-lg" Elevation="2">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Running
+                </MudText>
+
+                    <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-2">
+                    @ContainerList.Count(c =>
+                    c.State.Equals("running", StringComparison.OrdinalIgnoreCase))
+                    </MudText>
+            </MudPaper>
+        </MudItem>
+
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-4 rounded-lg" Elevation="2">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Stopped
+                </MudText>
+
+                <MudText Typo="Typo.h4" Color="Color.Error" Class="mt-2">
+                        @ContainerList.Count(c =>
+                        c.State.Equals("exited", StringComparison.OrdinalIgnoreCase))
+                        </MudText>
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+
+
+    <!-- CONTAINER LIST -->
+    <MudPaper Class="pa-4 mt-6 rounded-lg" Elevation="2">
+
+        <div class="d-flex justify-space-between align-center flex-wrap gap-3 mb-4">
+
+            <MudText Typo="Typo.h6">
+                All Containers
+            </MudText>
+
+            <MudTextField @bind-Value="_searchString"
+                          Placeholder="Search containers..."
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          Clearable="true"
+                          Style="max-width:300px" />
+
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                Docker connection failed: @_errorMessage
+            </MudAlert>
+
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Outlined"
+                       OnClick="LoadContainers">
+                Retry Connection
+            </MudButton>
+        }
+
+        <MudTable Items="@FilteredContainers"
+                  Hover="true"
+                  Dense="true"
+                  Striped="true"
+                  Loading="@_loading">
+
+            <HeaderContent>
+                <MudTh>Container</MudTh>
+                <MudTh>Image</MudTh>
+                <MudTh>State</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Ports</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd DataLabel="Container">
+                    <MudText Typo="Typo.body2">
+                        @context.Name
+                    </MudText>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(context.Id.Length > 12 ? context.Id[..12] : context.Id)
+                    </MudText>
+                </MudTd>
+
+                <MudTd DataLabel="Image">
+                    @context.Image
+                </MudTd>
+
+                <MudTd DataLabel="State">
+                    <MudChip T="string"
+                             Color="@GetStatusColor(context.State)"
+                             Size="Size.Small">
+                        @context.State
+                    </MudChip>
+                </MudTd>
+
+                <MudTd DataLabel="Status">
+                    @context.Status
+                </MudTd>
+
+                <MudTd DataLabel="Ports">
+                    @(string.IsNullOrWhiteSpace(context.Ports) ? "—" : context.Ports)
+                </MudTd>
+
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText Class="pa-4" Color="Color.Secondary">
+                    No Docker containers found.
+                </MudText>
+            </NoRecordsContent>
+
+        </MudTable>
+    </MudPaper>
+
+</MudContainer>
+
+
+@code {
+
+    private List<DockerContainer> ContainerList = new();
+
+    private string _searchString = "";
+
+    private bool _loading = true;
+
+    private string? _errorMessage;
+
+
+    // Fetch containers when page loads
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContainers();
+    }
+
+
+    // Fetch actual Docker containers
+    private async Task LoadContainers()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+
+            ContainerList = await DockerService.GetContainersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+
+    // Refresh button
+    private async Task RefreshContainers()
+    {
+        await LoadContainers();
+    }
+
+
+    // Search functionality
+    private IEnumerable<DockerContainer> FilteredContainers =>
+        string.IsNullOrWhiteSpace(_searchString)
+            ? ContainerList
+            : ContainerList.Where(c =>
+                c.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                c.Image.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
+
+
+    // Status colors
+    private Color GetStatusColor(string state)
+    {
+        return state.ToLowerInvariant() switch
+        {
+            "running" => Color.Success,
+            "exited" => Color.Error,
+            "paused" => Color.Warning,
+            "created" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+}

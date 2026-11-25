@@ -1,0 +1,413 @@
+﻿@page "/"
+@using MudBlazor
+
+<PageTitle>Dashboard | DockerPulse</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-space-between align-center mb-6">
+
+        <div>
+            <MudText Typo="Typo.h4" Class="mb-1">
+                Docker Overview
+            </MudText>
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Monitor your Docker environment in real time.
+            </MudText>
+        </div>
+
+        <MudChip T="string"
+                 Color="Color.Success"
+                 Variant="Variant.Outlined">
+            ● System Online
+        </MudChip>
+
+    </div>
+
+
+    <!-- OVERVIEW CARDS -->
+    <MudGrid Spacing="3">
+
+        <!-- TOTAL CONTAINERS -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Total Containers
+                </MudText>
+
+                <MudText Typo="Typo.h4" Class="mt-2">
+                    12
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Across all hosts
+                </MudText>
+
+            </MudPaper>
+        </MudItem>
+
+
+        <!-- RUNNING CONTAINERS -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Running Containers
+                </MudText>
+
+                <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-2">
+                    9
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Currently active
+                </MudText>
+
+            </MudPaper>
+        </MudItem>
+
+
+        <!-- CPU USAGE -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    CPU Usage
+                </MudText>
+
+                <MudText Typo="Typo.h4" Class="mt-2">
+                    34.8%
+                </MudText>
+
+                <MudProgressLinear Value="34.8"
+                                   Color="Color.Info"
+                                   Class="mt-3" />
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Overall utilization
+                </MudText>
+
+            </MudPaper>
+        </MudItem>
+
+
+        <!-- MEMORY USAGE -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Memory Usage
+                </MudText>
+
+                <MudText Typo="Typo.h4" Class="mt-2">
+                    62.4%
+                </MudText>
+
+                <MudProgressLinear Value="62.4"
+                                   Color="Color.Warning"
+                                   Class="mt-3" />
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Overall utilization
+                </MudText>
+
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+
+
+    <!-- PERFORMANCE CHARTS -->
+    <MudGrid Class="mt-3" Spacing="3">
+
+        <!-- CPU PERFORMANCE -->
+        <MudItem xs="12" md="6">
+
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.h6">
+                    CPU Performance
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    CPU utilization overview
+                </MudText>
+
+                <div class="chart-container">
+
+                    @foreach (var point in CpuPoints)
+                    {
+                        <div class="chart-column">
+
+                            <div class="chart-bar cpu-bar"
+                                 style="height: @(point.Value)%;">
+                            </div>
+
+                            <MudText Typo="Typo.caption">
+                                @point.Label
+                            </MudText>
+
+                        </div>
+                    }
+
+                </div>
+
+            </MudPaper>
+
+        </MudItem>
+
+
+        <!-- MEMORY PERFORMANCE -->
+        <MudItem xs="12" md="6">
+
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg dashboard-card">
+
+                <MudText Typo="Typo.h6">
+                    Memory Performance
+                </MudText>
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Memory utilization overview
+                </MudText>
+
+                <div class="chart-container">
+
+                    @foreach (var point in MemoryPoints)
+                    {
+                        <div class="chart-column">
+
+                            <div class="chart-bar memory-bar"
+                                 style="height: @(point.Value)%;">
+                            </div>
+
+                            <MudText Typo="Typo.caption">
+                                @point.Label
+                            </MudText>
+
+                        </div>
+                    }
+
+                </div>
+
+            </MudPaper>
+
+        </MudItem>
+
+    </MudGrid>
+
+
+    <!-- CONTAINER TABLE -->
+    <MudPaper Elevation="2" Class="pa-4 mt-6 rounded-lg dashboard-card">
+
+        <div class="d-flex justify-space-between align-center mb-4">
+
+            <MudText Typo="Typo.h6">
+                Running Containers
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small">
+                View All
+            </MudButton>
+
+        </div>
+
+
+        <MudTable Items="@Containers"
+                  Hover="true"
+                  Dense="true"
+                  Striped="true">
+
+            <HeaderContent>
+
+                <MudTh>Container</MudTh>
+                <MudTh>Image</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>CPU</MudTh>
+                <MudTh>Memory</MudTh>
+
+            </HeaderContent>
+
+
+            <RowTemplate>
+
+                <MudTd DataLabel="Container">
+                    <MudText Typo="Typo.body2">
+                        @context.Name
+                    </MudText>
+                </MudTd>
+
+
+                <MudTd DataLabel="Image">
+                    @context.Image
+                </MudTd>
+
+
+                <MudTd DataLabel="Status">
+
+                    <MudChip T="string"
+                             Color="Color.Success"
+                             Size="Size.Small"
+                             Variant="Variant.Filled">
+
+                        @context.Status
+
+                    </MudChip>
+
+                </MudTd>
+
+
+                <MudTd DataLabel="CPU">
+                    @context.Cpu%
+                </MudTd>
+
+
+                <MudTd DataLabel="Memory">
+                    @context.Memory
+                </MudTd>
+
+            </RowTemplate>
+
+        </MudTable>
+
+    </MudPaper>
+
+</MudContainer>
+
+
+<!-- COMPONENT LOGIC -->
+@code {
+
+    // CPU chart dummy data
+    private List<ChartPoint> CpuPoints =
+    [
+        new("10:00", 20),
+        new("10:05", 35),
+        new("10:10", 28),
+        new("10:15", 45),
+        new("10:20", 30),
+        new("10:25", 35)
+    ];
+
+
+    // Memory chart dummy data
+    private List<ChartPoint> MemoryPoints =
+    [
+        new("10:00", 40),
+        new("10:05", 45),
+        new("10:10", 48),
+        new("10:15", 55),
+        new("10:20", 58),
+        new("10:25", 62)
+    ];
+
+
+    // Container dummy data
+    private List<ContainerInfo> Containers =
+    [
+        new()
+        {
+            Name = "dockerpulse-api",
+            Image = "aspnet:10.0",
+            Status = "Running",
+            Cpu = 12.4,
+            Memory = "256 MB"
+        },
+
+        new()
+        {
+            Name = "sql-server",
+            Image = "mssql:2022",
+            Status = "Running",
+            Cpu = 18.2,
+            Memory = "1.2 GB"
+        },
+
+        new()
+        {
+            Name = "redis-cache",
+            Image = "redis:latest",
+            Status = "Running",
+            Cpu = 2.1,
+            Memory = "128 MB"
+        },
+
+        new()
+        {
+            Name = "nginx-proxy",
+            Image = "nginx:latest",
+            Status = "Running",
+            Cpu = 2.1,
+            Memory = "64 MB"
+        }
+    ];
+
+
+    // Chart point model
+    public record ChartPoint(string Label, double Value);
+
+
+    // Container model
+    public class ContainerInfo
+    {
+        public string Name { get; set; } = "";
+
+        public string Image { get; set; } = "";
+
+        public string Status { get; set; } = "";
+
+        public double Cpu { get; set; }
+
+        public string Memory { get; set; } = "";
+    }
+
+}
+
+
+<!-- PAGE STYLING -->
+<style>
+
+    .dashboard-card {
+        border: 1px solid var(--mud-palette-divider);
+    }
+
+    .chart-container {
+        height: 220px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        gap: 15px;
+        padding: 20px 10px 0 10px;
+        margin-top: 15px;
+    }
+
+    .chart-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+        flex: 1;
+        gap: 10px;
+    }
+
+    .chart-bar {
+        width: 65%;
+        min-height: 4px;
+        border-radius: 6px 6px 0 0;
+        transition: height 0.3s ease;
+    }
+
+    .cpu-bar {
+        background: #38BDF8;
+    }
+
+    .memory-bar {
+        background: #F59E0B;
+    }
+
+</style>
